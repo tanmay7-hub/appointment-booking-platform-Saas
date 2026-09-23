@@ -7,42 +7,244 @@ datasource db {
   provider = "postgresql"
 }
 
-model User = {
-   id String @id @default(uuid())
-   name String 
-   email String 
-   passwordHash String
-
-   createdAt   DateTime @default(now())
-   updatedAt   DateTime @updateAt
-   memberShip  organizationMember[]
-}
-model Organization = {
-  id String @default(uuid())
-  name String 
-  slug String @unique
-  ownerId @string
+model User {
+  id           String @id @default(uuid())
+  name         String
+  email        String @unique
+  passwordHash String
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  members organizationMember[]
+  memberships        OrganizationMember[]
+  ownedOrganizations Organization[]       @relation("OrganizationOwner")
+  appointments       Appointment[]
+  notifications      Notification[]
 }
-model OrganizationMember = {
-  id String @id @default(uuid())
-  organizationId String 
-  UserId String
-  role   Role
+
+model Organization {
+  id      String @id @default(uuid())
+  name    String
+  slug    String @unique
+  ownerId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  owner        User                 @relation("OrganizationOwner", fields: [ownerId], references: [id])
+  members      OrganizationMember[]
+  services     Service[]
+  appointments Appointment[]
+  closures     BusinessClosure[]
+}
+
+model OrganizationMember {
+  id             String @id @default(uuid())
+  organizationId String
+  userId         String
+  role           Role
+
   createdAt DateTime @default(now())
 
-  organization  Organization @relation[ fields : [organizationId] , references : [id]]
-  user          User  @relation[ fields : [UserId] , references : [id]]
+  organization           Organization            @relation(fields: [organizationId], references: [id])
+  user                   User                    @relation(fields: [userId], references: [id])
+  availability           Availability[]
+  availabilityExceptions AvailabilityException[]
+  appointments           Appointment[]
+  staffServices          StaffService[]
 
-  @@unique([organizationId , UserId])
+  @@unique([organizationId, userId])
 }
-enum Role = {
+
+model Service {
+  id             String @id @default(uuid())
+  organizationId String
+
+  name            String
+  description     String?
+  durationMinutes Int
+  price           Decimal
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization  Organization   @relation(fields: [organizationId], references: [id])
+  appointments  Appointment[]
+  staffServices StaffService[]
+}
+
+model StaffService {
+  id            String @id @default(uuid())
+  staffMemberId String
+  serviceId     String
+
+  staffMember OrganizationMember @relation(fields: [staffMemberId], references: [id])
+  service     Service            @relation(fields: [serviceId], references: [id])
+
+  @@unique([staffMemberId, serviceId])
+}
+
+model Availability {
+  id            String    @id @default(uuid())
+  staffMemberId String
+  dayOfWeek     DayOfWeek
+
+  startTime String
+  endTime   String
+
+  staffMember OrganizationMember @relation(fields: [staffMemberId], references: [id])
+
+  @@unique([staffMemberId, dayOfWeek, startTime, endTime])
+  @@index([staffMemberId, dayOfWeek])
+}
+
+model AvailabilityException {
+  id            String @id @default(uuid())
+  staffMemberId String
+
+  date      DateTime
+  type      AvailabilityExceptionType
+  startTime String?
+  endTime   String?
+  reason    String?
+
+  staffMember OrganizationMember @relation(fields: [staffMemberId], references: [id])
+
+  @@unique([staffMemberId, date])
+  @@index([staffMemberId, date])
+}
+
+model BusinessClosure {
+  id             String @id @default(uuid())
+  organizationId String
+
+  date      DateTime
+  reason    String?
+  createdAt DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([organizationId, date])
+}
+
+model Appointment {
+  id             String @id @default(uuid())
+  organizationId String
+  customerId     String
+  staffMemberId  String
+  serviceId      String
+
+  startTime DateTime
+  endTime   DateTime
+  status    AppointmentStatus @default(PENDING)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization       @relation(fields: [organizationId], references: [id])
+  customer     User               @relation(fields: [customerId], references: [id])
+  staffMember  OrganizationMember @relation(fields: [staffMemberId], references: [id])
+  service      Service            @relation(fields: [serviceId], references: [id])
+
+  payments Payment[]
+
+  @@index([organizationId, startTime])
+  @@index([staffMemberId, startTime])
+  @@index([customerId, startTime])
+}
+
+model Payment {
+  id            String @id @default(uuid())
+  appointmentId String
+
+  amount   Decimal
+  currency String        @default("INR")
+  status   PaymentStatus @default(PENDING)
+
+  provider          String
+  providerPaymentId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  appointment Appointment @relation(fields: [appointmentId], references: [id])
+}
+
+model Notification {
+  id     String @id @default(uuid())
+  userId String
+
+  type    NotificationType
+  channel NotificationChannel
+  status  NotificationStatus  @default(PENDING)
+
+  scheduledAt DateTime?
+  sentAt      DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, status])
+  @@index([scheduledAt, status])
+}
+
+enum Role {
   OWNER
   STAFF
   CUSTOMER
 }
 
+enum DayOfWeek {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
+enum AvailabilityExceptionType {
+  UNAVAILABLE
+  CUSTOM_HOURS
+}
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  SUCCESS
+  FAILED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+enum NotificationType {
+  APPOINTMENT_CONFIRMED
+  APPOINTMENT_CANCELLED
+  APPOINTMENT_REMINDER
+  APPOINTMENT_RESCHEDULED
+  PAYMENT_SUCCESS
+}
+
+enum NotificationChannel {
+  EMAIL
+  SMS
+  IN_APP
+}
+
+enum NotificationStatus {
+  PENDING
+  PROCESSING
+  SENT
+  FAILED
+}
