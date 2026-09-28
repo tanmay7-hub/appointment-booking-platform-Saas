@@ -39,7 +39,9 @@ export async function createOrganization(
  
 }
 
-
+export async function getOrganizationById(OrganizationId : string ){
+   return  prisma.organization.findUnique({where : {id : OrganizationId}});
+}
 export async function getUserOrganization(userId : string){
     
   const memberShips  = await prisma.organizationMember.findMany({
