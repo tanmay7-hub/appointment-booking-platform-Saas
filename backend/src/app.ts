@@ -1,5 +1,6 @@
 import express from 'express'
 import authRoutes from "./routes/auth.route.js"
+import organizationRoutes from "./routes/organization.route.js"
 const app = express();
 
 app.use(express.json());
@@ -12,4 +13,5 @@ app.get("/health" , (req,res)=>{
 });
 
 app.use("/api/auth" , authRoutes);
+app.use("/api/organizations" , organizationRoutes);
 export default app;
