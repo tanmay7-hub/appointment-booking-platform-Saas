@@ -1,6 +1,23 @@
 import { Request, Response } from "express";
 import {createOrganizationSchema} from "../validations/organization.validation.js"
-import { createOrganization } from "../services/organization.service.js"
+import { createOrganization , getUserOrganization } from "../services/organization.service.js"
+
+export async function getOrganization (req : Request , res : Response ){
+   try {
+        
+     if(!req.user ){
+      return res.status(401).json({message : "Authentication Required"});
+     }
+
+     const organization = await getUserOrganization(req.user.userId);
+
+
+     return res.status(200).json({message : "Organization  Fetched" ,  organization});
+   }catch(error){
+
+     return res.status(500).json({message : "Internal Server Error"});  
+   }
+}
 export async function createOrganizationMember (req : Request , res : Response){
     try{
       const result =  createOrganizationSchema.safeParse(req.body);

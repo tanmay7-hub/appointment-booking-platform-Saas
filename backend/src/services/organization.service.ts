@@ -38,3 +38,24 @@ export async function createOrganization(
     return results;
  
 }
+
+
+export async function getUserOrganization(userId : string){
+    
+  const memberShips  = await prisma.organizationMember.findMany({
+      where :{
+        userId,
+      },
+      include:{
+        organization : true
+      }
+  });
+
+   
+ return memberShips.map((memberShip)=>({
+  id : memberShip.organization.id ,
+  name : memberShip.organization.name,
+  slug : memberShip.organization.slug,
+  role : memberShip.role
+ }));
+}
