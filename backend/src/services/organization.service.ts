@@ -1,7 +1,51 @@
 import prisma from "../config/prisma.js";
 import type { createOrganizationInput } from "../validations/organization.validation.js";
-import type { CreateServiceInput } from "../validations/service.validation.js";
+import type {
+  CreateServiceInput,
+  UpdateSchemaInput,
+} from "../validations/service.validation.js";
 
+export async function updateService(
+  input: UpdateSchemaInput,
+  serviceId: string,
+  organizationId: string,
+) {
+  const { name, description, price, durationMinutes } = input;
+
+  const service = await prisma.service.findFirst({
+    where: {
+      id: serviceId,
+      organizationId,
+    },
+  });
+
+  if (!service) {
+    throw new Error("Service Not Found");
+  }
+  const updatedService = await prisma.service.update({
+    where: {
+      id: serviceId,
+    },
+    data: input,
+  });
+
+  return updatedService;
+}
+export async function getServiceById(
+  organizationId: string,
+  serviceId: string,
+) {
+  const service = await prisma.service.findFirst({
+    where: {
+      id: serviceId,
+      organizationId,
+    },
+  });
+  if (!service) {
+    throw new Error("Service Not Found");
+  }
+  return service;
+}
 export async function createService(
   input: CreateServiceInput,
   organizationId: string,
@@ -26,20 +70,19 @@ export async function createService(
     },
   });
 
-  return  service;
+  return service;
 }
-export async function getOrganizationServices(organizationId : string){
-   
+export async function getOrganizationServices(organizationId: string) {
   const organization = await prisma.organization.findUnique({
-    where:{
-       id:organizationId
+    where: {
+      id: organizationId,
     },
-    include:{
-      services:true
-    }
+    include: {
+      services: true,
+    },
   });
 
-  if(!organization ){
+  if (!organization) {
     throw new Error("Organization Not Found");
   }
 
