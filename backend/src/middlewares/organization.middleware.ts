@@ -8,7 +8,10 @@ export async function checkOrganizationMemberShip(req : Request , res : Response
        }      
 
        const {organizationId} = req.params;
-
+       
+       if(typeof organizationId !== "string"){
+      return res.status(422).json({message : "Unprocessable entity"});
+      }
        if(!organizationId){
          return res.status(400).json({message : "Organization Id is Required"});
        }

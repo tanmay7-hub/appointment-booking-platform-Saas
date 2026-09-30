@@ -49,8 +49,11 @@ export async function createOrganizationMember (req : Request , res : Response){
 
 export async function getOrganizationFromId(req : Request , res : Response ){
    try{ 
-       
-     const organization = await getOrganizationById(req.params.organizationId);
+    const {organizationId }= req.params;
+    if(typeof organizationId !== "string"){
+      return res.status(422).json({message : "Unprocessable entity"});
+    }
+     const organization = await getOrganizationById(organizationId);
 
      if(!organization){
       return res.status(403).json({message : "Organization not found"});

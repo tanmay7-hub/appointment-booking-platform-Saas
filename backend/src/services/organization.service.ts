@@ -28,6 +28,23 @@ export async function createService(
 
   return  service;
 }
+export async function getOrganizationServices(organizationId : string){
+   
+  const organization = await prisma.organization.findUnique({
+    where:{
+       id:organizationId
+    },
+    include:{
+      services:true
+    }
+  });
+
+  if(!organization ){
+    throw new Error("Organization Not Found");
+  }
+
+  return organization.services;
+}
 export async function createOrganization(
   input: createOrganizationInput,
   userId: string,
