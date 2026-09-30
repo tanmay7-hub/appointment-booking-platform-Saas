@@ -1,7 +1,7 @@
 import {Request , Response , NextFunction} from "express";
 import prisma from "../config/prisma.js";
 
-export async function checkOrganizationMemberShips(req : Request , res : Response , next : NextFunction){
+export async function checkOrganizationMemberShip(req : Request , res : Response , next : NextFunction){
     try{
        if(!req.user){
         return res.status(401).json({message : "Authentication Required"});

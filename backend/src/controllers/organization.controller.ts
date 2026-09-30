@@ -1,6 +1,9 @@
 import { Request, Response } from "express";
 import {createOrganizationSchema} from "../validations/organization.validation.js"
-import { createOrganization , getUserOrganization , getOrganizationById} from "../services/organization.service.js"
+import {createServiceSchema} from "../validations/service.validation.js"
+import { createOrganization , getUserOrganization , getOrganizationById } from "../services/organization.service.js"
+
+
 
 export async function getOrganization (req : Request , res : Response ){
    try {

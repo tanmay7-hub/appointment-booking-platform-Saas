@@ -2,7 +2,7 @@ import {Request , Response , NextFunction } from "express";
 import  type {Role} from "../../generated/prisma/client.js"
 
 
-export function requireRoles(...allowedRoles : Role[]){
+export function requireRole(...allowedRoles : Role[]){
     return (req : Request , res : Response , next : NextFunction) =>{
          if(!req.organization){
             return res.status(403).json({message : "Organization Context Required"});

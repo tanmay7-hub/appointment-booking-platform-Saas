@@ -62,7 +62,7 @@ model Service {
   organizationId String
 
   name            String
-  description     String?
+  description     String? 
   durationMinutes Int
   price           Decimal
 

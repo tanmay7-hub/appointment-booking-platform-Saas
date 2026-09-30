@@ -1,0 +1,11 @@
+
+
+POST http://localhost:5000/api/organizations/?organizationId=3003edf2-5263-4cd0-b13e-3923e352e8e6
+authorization:Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI1MDQ1YTBkOC05Nzg3LTRmODUtOTI3Zi1mMTI3NDBkZTgxMTAiLCJpYXQiOjE3OTA2MTI4OTYsImV4cCI6MTc5MTIxNzY5Nn0.FDtr-pnU7lUnWpHSfQaEi10K7FGlEPUvsHShbdBEtBs
+
+{
+  "name": "Haircut",
+  "description": "Professional haircut",
+  "durationMinutes": 30,
+  "price": 500
+}
