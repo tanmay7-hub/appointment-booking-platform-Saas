@@ -12,5 +12,4 @@ router.get("/:organizationId/services/:serviceId", authenticate,checkOrganizatio
 router.patch("/:organizationId/services/:serviceId" , authenticate , checkOrganizationMemberShip ,requireRole("STAFF" , "OWNER") ,updateServiceController );
 
 
-
 export default router;

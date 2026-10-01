@@ -31,6 +31,31 @@ export async function updateService(
 
   return updatedService;
 }
+export async function deleteService(organizationId : string , serviceId : string){
+
+  const service = await prisma.service.findFirst({
+     where:{
+      id : serviceId,
+      organizationId
+     }
+  });
+  if(!service){
+    throw new Error("Service Not Found.");
+
+
+    const updatedService = await prisma.service.update({
+       where:{
+         id: serviceId,
+         organizationId
+       },
+       data:{
+          isActive : false
+       } 
+    });
+
+    return updatedService;
+  }
+}
 export async function getServiceById(
   organizationId: string,
   serviceId: string,
