@@ -2,7 +2,8 @@ import {
   createService,
   getOrganizationServices,
   getServiceById,
-  updateService
+  updateService, 
+  deleteService
 } from "../services/organization.service.js";
 import { createServiceSchema  , updateServiceSchema } from "../validations/service.validation.js";
 import { Request, Response } from "express";
@@ -36,6 +37,33 @@ export async function createServiceController(req: Request, res: Response) {
       return res.status(422).json({ message: "Unprocessable Entity" });
     }
     return res.status(500).json({ message: "Internal Server Error" });
+  }
+}
+
+export async function deleteServiceController (req: Request , res : Response){
+  try{
+    const {serviceId , organizationId} = req.params;
+    if (
+      !serviceId ||
+      !organizationId ||
+      typeof organizationId !== "string" ||
+      typeof serviceId !== "string"
+    ) {
+      return res
+        .status(400)
+        .json({ message: "ServiceId and OrganizationId are required." });
+    }
+
+    const deletedService = await deleteService(organizationId , serviceId);
+
+    return res.status(200).json({deletedService});
+
+  }catch(err){
+    if(err instanceof Error && err.message === "Service Not Found"){
+       return res.status(404).json({message : "Service Not Found"});
+    }
+
+    return res.status(500).json({message : "Internal Server Error"});
   }
 }
 
@@ -75,7 +103,7 @@ export async function getServiceByIdController(req: Request, res: Response) {
     ) {
       return res
         .status(400)
-        .json({ message: "ServiceId and OrganizationId are required.s" });
+        .json({ message: "ServiceId and OrganizationId are required." });
     }
 
     const service = await getServiceById(organizationId , serviceId);

@@ -40,7 +40,7 @@ export async function deleteService(organizationId : string , serviceId : string
      }
   });
   if(!service){
-    throw new Error("Service Not Found.");
+    throw new Error("Service Not Found");
 
 
     const updatedService = await prisma.service.update({
