@@ -31,26 +31,125 @@ export async function updateService(
 
   return updatedService;
 }
-export async function deleteService(organizationId : string , serviceId : string){
 
-  const service = await prisma.service.findFirst({
+export async function getStaffService(organizationId : string , staffMemberId : string){
+   
+   const serviceAssigned = await prisma.organizationMember.findMany({
      where:{
-      id : serviceId,
-      organizationId
+        organizationId ,
+        userId : staffMemberId,
+        role : "STAFF"
+     }
+   });
+
+   return serviceAssigned;
+}
+export async function getStaffList(organizationId : string){
+    
+  const staffList = await prisma.organizationMember.findMany({
+     where :{
+       role :"STAFF",
+       organizationId
+     },
+     include:{
+      user:{
+       select :{
+        id : true ,
+        name : true,
+        email : true}
+      }
      }
   });
-  if(!service){
+
+  return staffList;
+}
+export async function addStaffMember(userId: string, organizationId: string) {
+  const check = await prisma.organizationMember.findFirst({
+    where: {
+      userId,
+      organizationId,
+    },
+  });
+
+  if (check) {
+    throw new Error("User already is A member");
+  }
+  const new_member = await prisma.organizationMember.create({
+    data: {
+      organizationId,
+      userId,
+      role: "STAFF",
+    },
+  });
+
+  return new_member;
+}
+export async function assignServiceToStaff(
+  organizationId: string,
+  serviceId: string,
+  staffMemberId: string,
+) {
+  const UserCheck = await prisma.organizationMember.findFirst({
+    where: {
+      organizationId,
+      userId: staffMemberId,
+      role : "STAFF"
+    },
+  });
+
+  if (!UserCheck) {
+    throw new Error("Staff member does not belong to the organization");
+  }
+
+  const serviceCheck = await prisma.service.findFirst({
+    where: {
+      id: serviceId,
+      organizationId,
+    },
+  });
+  if (!serviceCheck) {
+    throw new Error("No service found");
+  }
+
+  const existingAssignment = await prisma.staffService.findUnique({
+    where: {
+      staffMemberId_serviceId: {
+        staffMemberId,
+        serviceId,
+      },
+    },
+  });
+
+  if (existingAssignment) {
+    throw new Error("Service already assigned to this staff member");
+  }
+  const assignment = await prisma.staffService.create({
+    data: {
+      staffMemberId,
+      serviceId,
+    },
+  });
+
+  return assignment;
+}
+export async function deleteService(organizationId: string, serviceId: string) {
+  const service = await prisma.service.findFirst({
+    where: {
+      id: serviceId,
+      organizationId,
+    },
+  });
+  if (!service) {
     throw new Error("Service Not Found");
 
-
     const updatedService = await prisma.service.update({
-       where:{
-         id: serviceId,
-         organizationId
-       },
-       data:{
-          isActive : false
-       } 
+      where: {
+        id: serviceId,
+        organizationId,
+      },
+      data: {
+        isActive: false,
+      },
     });
 
     return updatedService;
@@ -64,6 +163,7 @@ export async function getServiceById(
     where: {
       id: serviceId,
       organizationId,
+      isActive: true,
     },
   });
   if (!service) {
