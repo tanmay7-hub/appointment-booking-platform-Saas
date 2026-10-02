@@ -32,33 +32,47 @@ export async function updateService(
   return updatedService;
 }
 
-export async function getStaffService(organizationId : string , staffMemberId : string){
-   
-   const serviceAssigned = await prisma.organizationMember.findMany({
-     where:{
-        organizationId ,
-        userId : staffMemberId,
-        role : "STAFF"
-     }
-   });
+export async function getStaffService(
+  organizationId: string,
+  staffMemberId: string,
+) {
+  const staffMember = await prisma.organizationMember.findFirst({
+    where: {
+      id: staffMemberId,
+      organizationId,
+      role: "STAFF",
+    },
+  });
+  if (!staffMember) {
+    throw new Error("Staff member not found");
+  }
 
-   return serviceAssigned;
+  const serviceAssigned = await prisma.staffService.findMany({
+    where: {
+      staffMemberId,
+    },
+    include: {
+      service: true,
+    },
+  });
+
+  return serviceAssigned;
 }
-export async function getStaffList(organizationId : string){
-    
+export async function getStaffList(organizationId: string) {
   const staffList = await prisma.organizationMember.findMany({
-     where :{
-       role :"STAFF",
-       organizationId
-     },
-     include:{
-      user:{
-       select :{
-        id : true ,
-        name : true,
-        email : true}
-      }
-     }
+    where: {
+      role: "STAFF",
+      organizationId,
+    },
+    include: {
+      user: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        },
+      },
+    },
   });
 
   return staffList;
@@ -93,7 +107,7 @@ export async function assignServiceToStaff(
     where: {
       organizationId,
       userId: staffMemberId,
-      role : "STAFF"
+      role: "STAFF",
     },
   });
 
