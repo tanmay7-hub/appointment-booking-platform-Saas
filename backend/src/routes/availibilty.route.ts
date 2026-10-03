@@ -38,6 +38,4 @@ router.delete(
   requireRole("STAFF" , "OWNER"),
   deleteAvailabilityController,
 );
-router.post(
-   "/:organizationId/staff/:staffMemberId/availability-exceptions",
-)
+
