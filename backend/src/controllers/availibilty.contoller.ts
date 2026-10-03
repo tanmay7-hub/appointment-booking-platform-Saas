@@ -2,9 +2,13 @@ import type { Request, Response } from "express";
 import {
   createAvailability,
   getAvailability,
-  updateAvailability
+  updateAvailability,
+  deleteAvailability,
 } from "../services/availibilty.service.js";
-import { createAvailabilitySchema , updateAvailabilitySchema} from "../validations/availibility.validation.js";
+import {
+  createAvailabilitySchema,
+  updateAvailabilitySchema,
+} from "../validations/availibility.validation.js";
 export async function createAvailabilityController(
   req: Request,
   res: Response,
@@ -58,37 +62,87 @@ export async function createAvailabilityController(
   }
 }
 
-export async function updateAvailabilityController(req : Request , res : Response){
-    try{
-        const {organizationId , staffMemberId , availabilityId} = req.params;
+export async function deleteAvailabilityController(
+  req: Request,
+  res: Response,
+) {
+  try {
+    const { organizationId, staffMemberId, availabilityId } = req.params;
 
-        if(!organizationId || !staffMemberId || !availabilityId){
-            return res.status(400).json({message : "Invalid input"});
-        }
-        if(typeof organizationId !== "string" || typeof staffMemberId !== "string" || typeof availabilityId !== "string"){
-            return res.status(400).json({message : "Invalid input"});
-        }
-        const result = updateAvailabilitySchema.safeParse(req.body);
-
-        if(!result.success){
-            return res.status(400).json({message : "Invalid input"});
-        }
-        
-        const updatedAvailability = await updateAvailability(result.data , organizationId , staffMemberId , availabilityId);
-
-
-        return res.status(201).json({updatedAvailability});
-        
-    }catch(err){
-
-        if(err instanceof Error && err.message === "Availability not found"){
-         return res.status(404).json({message : "Availability not found"});
-        }
-        if(err instanceof Error && err.message === "Start time must be greater than endTime"){
-          return res.status(400).json({message : "invalid input"});
-        } 
-        return res.status(500).json({message : "Internal Server Error"});
+    if (!organizationId || !staffMemberId || !availabilityId) {
+      return res.status(400).json({ message: "Invalid input" });
     }
+    if (
+      typeof organizationId !== "string" ||
+      typeof staffMemberId !== "string" ||
+      typeof availabilityId !== "string"
+    ) {
+      return res.status(400).json({ message: "Invalid input" });
+    }
+    const deletedAvailability = await deleteAvailability(
+      organizationId,
+      staffMemberId,
+      availabilityId,
+    );
+
+    return res
+      .status(200)
+      .json({ message: "Deleted Availability", deletedAvailability });
+  } catch (err) {
+    
+    if (err instanceof Error && err.message === "Availability not found") {
+      return res.status(404).json({
+        message: "Availability not found",
+      });
+    }
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+}
+export async function updateAvailabilityController(
+  req: Request,
+  res: Response,
+) {
+  try {
+    const { organizationId, staffMemberId, availabilityId } = req.params;
+
+    if (!organizationId || !staffMemberId || !availabilityId) {
+      return res.status(400).json({ message: "Invalid input" });
+    }
+    if (
+      typeof organizationId !== "string" ||
+      typeof staffMemberId !== "string" ||
+      typeof availabilityId !== "string"
+    ) {
+      return res.status(400).json({ message: "Invalid input" });
+    }
+    const result = updateAvailabilitySchema.safeParse(req.body);
+
+    if (!result.success) {
+      return res.status(400).json({ message: "Invalid input" });
+    }
+
+    const updatedAvailability = await updateAvailability(
+      result.data,
+      organizationId,
+      staffMemberId,
+      availabilityId,
+    );
+
+    return res.status(200).json({ updatedAvailability });
+  } catch (err) {
+    if (err instanceof Error && err.message === "Availability not found") {
+      return res.status(404).json({ message: "Availability not found" });
+    }
+    if (
+      err instanceof Error &&
+      err.message === "Start time must be before  endTime"
+    ) {
+      return res
+        .status(400)
+        .json({ message: "Start time must be before  endTime" });
+    }
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
 }
 export async function getAvailabilityController(req: Request, res: Response) {
   try {

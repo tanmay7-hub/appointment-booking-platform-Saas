@@ -3,6 +3,7 @@ import {
   createAvailabilityController,
   getAvailabilityController,
   updateAvailabilityController,
+  deleteAvailabilityController,
 } from "../controllers/availibilty.contoller.js";
 import { authenticate } from "../middlewares/auth.middleware.js";
 import { checkOrganizationMemberShip } from "../middlewares/organization.middleware.js";
@@ -29,3 +30,15 @@ router.patch(
   requireRole("STAFF"),
   updateAvailabilityController,
 );
+
+router.delete(
+  "/:organizationId/staff/:staffMemberId/availibility/:availabilityId",
+  authenticate,
+  checkOrganizationMemberShip,
+  requireRole("STAFF" , "OWNER"),
+  deleteAvailabilityController,
+);
+router.post(
+   "/:organizationId/staff/:staffMemberId/availability-exceptions",
+
+)

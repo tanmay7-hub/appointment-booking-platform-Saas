@@ -1,10 +1,12 @@
 import type {CreateAvailabilityInput , UpdateAvailabilityInput} from "../validations/availibility.validation.js";
 import prisma from "../config/prisma.js"
+
+
 export async function createAvailability(input :  CreateAvailabilityInput , organizationId : string , staffMemberId : string){
    const { dayOfWeek, startTime, endTime } = input;
    
 
-   const staffMember = await prisma.organizationMember.findUnique({
+   const staffMember = await prisma.organizationMember.findFirst({
     where:{
         id : staffMemberId ,
         organizationId,
@@ -40,7 +42,7 @@ export async function createAvailability(input :  CreateAvailabilityInput , orga
 }
 export async function getAvailability (organizationId : string , staffMemberId : string){
     
-   const staffMember = await prisma.organizationMember.findUnique({
+   const staffMember = await prisma.organizationMember.findFirst({
       where:{
          id : staffMemberId ,
          organizationId ,
@@ -48,7 +50,7 @@ export async function getAvailability (organizationId : string , staffMemberId :
       }
    });
    if(!staffMember){
-      throw new Error("Staff member does not exists");
+      throw new Error("Staff member not found");
    }
 
    const availability = await prisma.availability.findMany({
@@ -62,7 +64,6 @@ export async function getAvailability (organizationId : string , staffMemberId :
 
    return availability;
 }
-
 export async function updateAvailability(input : UpdateAvailabilityInput , organizationId : string , staffMemberId : string , availabilityId : string){
      
    const availability = await prisma.availability.findUnique({
@@ -83,7 +84,7 @@ export async function updateAvailability(input : UpdateAvailabilityInput , organ
    const endTime = input.endTime ?? availability.endTime;
 
    if(startTime >= endTime){
-      throw new Error("Start time must be greater than endTime");
+      throw new Error("Start time must be before  endTime");
    }
 
    const updateAvailability = await prisma.availability.update({
@@ -94,4 +95,27 @@ export async function updateAvailability(input : UpdateAvailabilityInput , organ
    });
 
    return updateAvailability;
+}
+export async function deleteAvailability(organizationId : string , staffMemberId : string , availabilityId : string){
+   const availability = await prisma.availability.findFirst({
+      where:{
+         id : availabilityId,
+         staffMemberId,
+         staffMember:{
+            organizationId ,
+            role:"STAFF"
+         }
+      }
+   });
+   if(!availability){
+      throw new Error("Availabiltity not found");
+   }
+
+   const deletedAvailability  = await prisma.availability.delete({
+      where:{
+         id : availabilityId
+      }
+   });
+
+   return deletedAvailability;
 }
