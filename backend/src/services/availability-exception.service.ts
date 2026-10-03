@@ -2,6 +2,25 @@ import type { CreateAvailabilityExceptionInput } from "../validations/availabili
 import prisma from "../config/prisma.js";
 
 
+export async function updateAvailabilityException(
+  organizationId : string,
+  staffMemberId : string ,
+  exceptionId : string
+){
+  const staffMember = await prisma.organizationMember.findFirst({
+    where: {
+      staffMemberId,
+      organizationId,
+      role: "STAFF",
+    },
+  });
+  if (!staffMember) {
+    throw new Error("Staff member not found");
+  }
+
+  
+ 
+}
 export async function getAvailabilityException(
   organizationId : string , 
   staffMemberId : string
