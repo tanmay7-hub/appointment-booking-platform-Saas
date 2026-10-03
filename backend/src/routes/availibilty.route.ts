@@ -40,5 +40,4 @@ router.delete(
 );
 router.post(
    "/:organizationId/staff/:staffMemberId/availability-exceptions",
-
 )
