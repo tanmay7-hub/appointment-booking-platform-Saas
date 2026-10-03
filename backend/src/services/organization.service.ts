@@ -31,7 +31,7 @@ export async function updateService(
 
   return updatedService;
 }
-
+ 
 export async function getStaffService(
   organizationId: string,
   staffMemberId: string,

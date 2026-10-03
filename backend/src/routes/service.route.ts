@@ -73,5 +73,5 @@ router.get(
   authenticate,
   getStaffServiceController,
 );
-router.post("/:organizationId/staff/:staffMemberId/availibility" , )
+
 export default router;
