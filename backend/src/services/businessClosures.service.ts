@@ -40,6 +40,38 @@ export async function createBusinessClosure(
   return closure;
 }
 
+
+export async function deleteBusinessClosure(
+  organizationId : string,
+  closureId : string
+){
+  const organization = await prisma.organization.findUnique({
+    where:{
+      id : organizationId
+    }
+  });
+  if(!organization){
+    throw new Error("Organization does not exists");
+  }
+  const closure = await prisma.businessClosure.findFirst({
+    where:{
+      id : closureId,
+      organizationId
+    }
+  });
+
+  if(!closure){
+    throw new Error("Closure does not exits");
+  }
+
+  const deletedClosure = await prisma.businessClosure.delete({
+    where:{
+      id : closureId
+    }
+  });
+
+  return deletedClosure;
+}
 export async function updateBusinessClosure(
   input : UpdateBusinessClosureInput,
   organizationId : string,
