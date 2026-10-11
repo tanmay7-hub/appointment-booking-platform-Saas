@@ -56,4 +56,30 @@ export const createAvailabilityExceptionSchema = z
     }
   });
 
+export const updateAvailabilityExceptionSchema = z
+  .object({
+    date: z.string().date().optional(),
+
+    type: z
+      .enum(["UNAVAILABLE", "CUSTOM_HOURS"])
+      .optional(),
+
+    startTime: z
+      .string()
+      .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Invalid start time")
+      .optional(),
+
+    endTime: z
+      .string()
+      .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Invalid end time")
+      .optional(),
+
+    reason: z.string().trim().max(500).optional(),
+  })
+  .refine(
+    (data) => Object.keys(data).length > 0,
+    "At least one field is required"
+  );
+
+export type UpdateAvailabilityExceptionInput = z.infer<typeof updateAvailabilityExceptionSchema>;
 export type CreateAvailabilityExceptionInput = z.infer<typeof createAvailabilityExceptionSchema>;

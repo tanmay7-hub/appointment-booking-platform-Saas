@@ -1,8 +1,13 @@
 import { authenticate } from "../middlewares/auth.middleware.js";
 import { checkOrganizationMemberShip } from "../middlewares/organization.middleware.js";
 import { requireRole } from "../middlewares/role.middleware.js";
-import {Router} from "express";
-import {createAvailabilityExceptionController , getAvailabilityExceptionController} from "../controllers/availability-exception.controller.js";
+import { Router } from "express";
+import {
+  createAvailabilityExceptionController,
+  getAvailabilityExceptionController,
+  updateAvailabilityExceptionController,
+  deleteAvailabilityExceptionController,
+} from "../controllers/availability-exception.controller.js";
 
 const router = Router();
 
@@ -11,19 +16,27 @@ router.post(
   authenticate,
   checkOrganizationMemberShip,
   requireRole("OWNER", "STAFF"),
-  createAvailabilityExceptionController
+  createAvailabilityExceptionController,
 );
 router.get(
   "/:organizationId/staff/:staffMemberId/availability-exceptions",
   authenticate,
   checkOrganizationMemberShip,
-  getAvailabilityExceptionController
+  getAvailabilityExceptionController,
 );
 
-router.post(
+router.patch(
   "/:organizationId/staff/:staffMemberId/availability-exceptions/:exceptionId",
-  authenticate ,
+  authenticate,
   checkOrganizationMemberShip,
-  requireRole("STAFF" ,"OWNER"),
-  
-)
+  requireRole("STAFF", "OWNER"),
+  updateAvailabilityExceptionController,
+);
+
+router.delete(
+  "/:organizationId/staff/:staffMemberId/availability-exceptions/:exceptionId",
+  authenticate,
+  checkOrganizationMemberShip,
+  requireRole("OWNER", "STAFF"),
+  deleteAvailabilityExceptionController,
+);
