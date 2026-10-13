@@ -3,45 +3,87 @@ import {
   createAppointment,
   getAppointments,
   getAppointmentById,
+  deleteAppointment,
 } from "../services/appoinment.service.js";
 import { createAppointmentSchema } from "../validations/appointment.validation.js";
 
-export async function getAppointmentByIdController(
-  req: Request,
-  res: Response,
-) {
-  try{
+
+
+export async function deleteAppointmentController(req: Request, res: Response) {
+  try {
     const { organizationId, appointmentId } = req.params;
-  
-  if(!req.user || !req.organization){
-    return res.status(401).json({message : "Authentication failed"});
-  }
-  if (!organizationId || !appointmentId) {
-    return res.status(400).json({ message: "Invalid Input" });
-  }
 
-  if(typeof organizationId !== "string"  || typeof appointmentId !== "string"){
-    return res.status(400).json({message : "Invalid input"});
-  }
+    if (!req.user || !req.organization) {
+      return res.status(401).json({ message: "Authentication failed" });
+    }
+    if (!organizationId || !appointmentId) {
+      return res.status(400).json({ message: "Invalid Input" });
+    }
 
-  const appointment = await getAppointmentById(
+    if (
+      typeof organizationId !== "string" ||
+      typeof appointmentId !== "string"
+    ) {
+      return res.status(400).json({ message: "Invalid input" });
+    }
+    const deletedAppointment = await deleteAppointment(
       organizationId,
       appointmentId,
       req.user.userId,
       req.organization.role,
     );
 
-    return res.status(200).json({appointment});
-}catch(err){
-
-    if(err instanceof Error && err.message === "No appointment found"){
-        return res.status(404).json({message : "appointment not found"});
+    return res.status(200).json({ deletedAppointment });
+  } catch (err) {
+    if (err instanceof Error && err.message === "No appointment found") {
+      return res.status(404).json({ message: "appointment not found" });
     }
-    return res.status(500).json({message : "Internal server Error"});
+    if (
+      err instanceof Error &&
+      err.message === "Appointment cannot be cancelled"
+    ) {
+      return res
+        .status(404)
+        .json({ message: "Appointment cannot be cancelled" });
+    }
+    return res.status(500).json({ message: "Internal server error" });
+  }
 }
+export async function getAppointmentByIdController(
+  req: Request,
+  res: Response,
+) {
+  try {
+    const { organizationId, appointmentId } = req.params;
 
+    if (!req.user || !req.organization) {
+      return res.status(401).json({ message: "Authentication failed" });
+    }
+    if (!organizationId || !appointmentId) {
+      return res.status(400).json({ message: "Invalid Input" });
+    }
 
-  
+    if (
+      typeof organizationId !== "string" ||
+      typeof appointmentId !== "string"
+    ) {
+      return res.status(400).json({ message: "Invalid input" });
+    }
+
+    const appointment = await getAppointmentById(
+      organizationId,
+      appointmentId,
+      req.user.userId,
+      req.organization.role,
+    );
+
+    return res.status(200).json({ appointment });
+  } catch (err) {
+    if (err instanceof Error && err.message === "No appointment found") {
+      return res.status(404).json({ message: "appointment not found" });
+    }
+    return res.status(500).json({ message: "Internal server Error" });
+  }
 }
 export async function getAppointmentsController(req: Request, res: Response) {
   try {

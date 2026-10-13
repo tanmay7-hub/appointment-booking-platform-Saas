@@ -24,7 +24,7 @@ export async function checkOrganizationMemberShip(req : Request , res : Response
             }
          }
        });
-       console.log(organization);
+
        if(!organization){
         return res.status(403).json({message : "You are not the member of this organization"});
        }

@@ -6,6 +6,7 @@ import {
   createAppointmentController,
   getAppointmentsController,
   getAppointmentByIdController,
+  deleteAppointmentController,
 } from "../controllers/appointment.controller.js";
 const router = Router();
 
@@ -27,4 +28,17 @@ router.get(
   authenticate,
   checkOrganizationMemberShip,
   getAppointmentByIdController,
+);
+
+router.delete(
+  "/:organizationId/appointments/:appointmentId/cancel",
+  authenticate,
+  checkOrganizationMemberShip,
+  deleteAppointmentController,
+);
+router.patch(
+  "/:organizationId/appointments/:appointmentId/reschedule",
+   authenticate,
+   checkOrganizationMemberShip,
+   
 );

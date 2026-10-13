@@ -4,6 +4,110 @@ import prisma from "../config/prisma.js";
 
 
 
+
+
+export async function rescheduleAppointment(
+  organizationId : string ,
+  appointmentId : string ,
+  userId : string ,
+  role : "OWNER" | "STAFF" | "CUSTOMER"
+){
+  const appointment = await prisma.appointment.findFirst({
+    where:{
+       id : appointmentId,
+       organizationId,
+       ...(role === "CUSTOMER" ? {customerId : userId} : {}),
+       ...(role === "STAFF" ? {staffMember : {userId}} : {})
+    },
+    include:{
+      service : true,
+      customer :{
+        select:{
+          id : true ,
+          name : true,
+          email : true
+        }
+      },
+      staffMember:{
+         include:{
+          user:{
+            select:{
+              id : true,
+              name : true
+            }
+          }
+         }
+      },
+      payments: true
+    }
+  });
+
+  if(!appointment){
+    throw new Error ("No appointment found");
+  }
+  
+
+}
+export async function deleteAppointment(
+  organizationId : string ,
+  appointmentId : string ,
+  userId : string ,
+  role : "OWNER" | "STAFF" | "CUSTOMER"
+){
+  const appointment = await prisma.appointment.findFirst({
+    where:{
+       id : appointmentId,
+       organizationId,
+       ...(role === "CUSTOMER" ? {customerId : userId} : {}),
+       ...(role === "STAFF" ? {staffMember : {userId}} : {})
+    },
+    include:{
+      service : true,
+      customer :{
+        select:{
+          id : true ,
+          name : true,
+          email : true
+        }
+      },
+      staffMember:{
+         include:{
+          user:{
+            select:{
+              id : true,
+              name : true
+            }
+          }
+         }
+      },
+      payments: true
+    }
+  });
+
+  if(!appointment){
+    throw new Error ("No appointment found");
+  }
+
+  
+  if(appointment.status === "CANCELLED" ||
+     appointment.status === "NO_SHOW" ||
+     appointment.status === "COMPLETED"
+  ){
+    throw new Error("Appointment cannot be cancelled");
+  }
+
+  const deletedAppointment = await prisma.appointment.update({
+    where:{
+      id : appointmentId 
+    },
+    data:{
+      status:"CANCELLED"
+    }
+  });
+
+  return deletedAppointment;
+
+}
 export async function getAppointmentById(
   organizationId : string,
   appointmentId : string,
