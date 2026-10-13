@@ -7,6 +7,8 @@ import {
   getAppointmentsController,
   getAppointmentByIdController,
   deleteAppointmentController,
+  rescheduleAppointmentController,
+  updateAppointmentStatusController,
 } from "../controllers/appointment.controller.js";
 const router = Router();
 
@@ -40,5 +42,13 @@ router.patch(
   "/:organizationId/appointments/:appointmentId/reschedule",
    authenticate,
    checkOrganizationMemberShip,
-   
+   rescheduleAppointmentController
 );
+router.patch(
+    "/:organizationId/appointment/:appointmentId/status",
+     authenticate ,
+     checkOrganizationMemberShip,
+     requireRole("STAFF" , "OWNER"),
+     updateAppointmentStatusController
+);
+

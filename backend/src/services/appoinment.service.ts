@@ -1,152 +1,178 @@
-import type { CreateAppointmentInput } from "../validations/appointment.validation.js";
+import type {
+  CreateAppointmentInput,
+  RescheduleAppointmentInput,
+  UpdateAppointmentStatusInput,
+} from "../validations/appointment.validation.js";
 import prisma from "../config/prisma.js";
 
-
-
-
-
-
-export async function rescheduleAppointment(
-  organizationId : string ,
-  appointmentId : string ,
-  userId : string ,
-  role : "OWNER" | "STAFF" | "CUSTOMER"
-){
+export async function updateAppointmentStatus(
+  input: UpdateAppointmentStatusInput,
+  organizationId: string,
+  appointmentId: string,
+  userId: string,
+  role: "OWNER" | "STAFF" | "CUSTOMER",
+) {
+  if (role === "CUSTOMER") {
+    throw new Error("Customer cannot update the appointment status");
+  }
   const appointment = await prisma.appointment.findFirst({
-    where:{
-       id : appointmentId,
-       organizationId,
-       ...(role === "CUSTOMER" ? {customerId : userId} : {}),
-       ...(role === "STAFF" ? {staffMember : {userId}} : {})
+    where: {
+      id: appointmentId,
+      organizationId,
+      ...(role === "STAFF" ? { staffMember: { userId } } : {}),
     },
-    include:{
-      service : true,
-      customer :{
-        select:{
-          id : true ,
-          name : true,
-          email : true
-        }
-      },
-      staffMember:{
-         include:{
-          user:{
-            select:{
-              id : true,
-              name : true
-            }
-          }
-         }
-      },
-      payments: true
-    }
   });
 
-  if(!appointment){
-    throw new Error ("No appointment found");
+  if (!appointment) {
+    throw new Error("Appointment not found");
   }
-  
 
+  const allowedTransitions: Record<string, string[]> = {
+    PENDING: ["CONFIRMED"],
+    CONFIRMED: ["COMPLETED", "NO_SHOW"],
+  };
+
+  const allowedStatuses = allowedTransitions[appointment.status] ?? [];
+
+  if (!allowedStatuses.includes(input.status)) {
+    throw new Error("Invalid appointment status transition");
+  }
+
+
+  const updatedAppointment = await prisma.appointment.update({
+     where:{
+      id : appointmentId
+     },
+     data:{
+      status : input.status
+     }
+  });
+
+  return updatedAppointment;
+}
+export async function rescheduleAppointment(
+  input: RescheduleAppointmentInput,
+  organizationId: string,
+  appointmentId: string,
+  userId: string,
+  role: "OWNER" | "STAFF" | "CUSTOMER",
+) {
+  const appointment = await prisma.appointment.findFirst({
+    where: {
+      id: appointmentId,
+      organizationId,
+      ...(role === "CUSTOMER" ? { customerId: userId } : {}),
+      ...(role === "STAFF" ? { staffMember: { userId } } : {}),
+    },
+    include: {
+      service: true,
+    },
+  });
+
+  if (!appointment) {
+    throw new Error("No appointment found");
+  }
+  const startTime = new Date(input.startTime);
+
+  if (startTime <= new Date()) {
+    throw new Error("Appointment must be scheduled in the future");
+  }
+
+  const endTime = new Date(
+    startTime.getTime() + appointment.service.durationMinutes * 60 * 1000,
+  );
+
+  const updatedAppointment = await prisma.appointment.update({
+    where: {
+      id: appointmentId,
+    },
+    data: {
+      startTime,
+      endTime,
+    },
+  });
+
+  return updatedAppointment;
 }
 export async function deleteAppointment(
-  organizationId : string ,
-  appointmentId : string ,
-  userId : string ,
-  role : "OWNER" | "STAFF" | "CUSTOMER"
-){
+  organizationId: string,
+  appointmentId: string,
+  userId: string,
+  role: "OWNER" | "STAFF" | "CUSTOMER",
+) {
   const appointment = await prisma.appointment.findFirst({
-    where:{
-       id : appointmentId,
-       organizationId,
-       ...(role === "CUSTOMER" ? {customerId : userId} : {}),
-       ...(role === "STAFF" ? {staffMember : {userId}} : {})
+    where: {
+      id: appointmentId,
+      organizationId,
+      ...(role === "CUSTOMER" ? { customerId: userId } : {}),
+      ...(role === "STAFF" ? { staffMember: { userId } } : {}),
     },
-    include:{
-      service : true,
-      customer :{
-        select:{
-          id : true ,
-          name : true,
-          email : true
-        }
-      },
-      staffMember:{
-         include:{
-          user:{
-            select:{
-              id : true,
-              name : true
-            }
-          }
-         }
-      },
-      payments: true
-    }
+    include: {
+      service: true,
+    },
   });
 
-  if(!appointment){
-    throw new Error ("No appointment found");
+  if (!appointment) {
+    throw new Error("No appointment found");
   }
 
-  
-  if(appointment.status === "CANCELLED" ||
-     appointment.status === "NO_SHOW" ||
-     appointment.status === "COMPLETED"
-  ){
+  if (
+    appointment.status === "CANCELLED" ||
+    appointment.status === "NO_SHOW" ||
+    appointment.status === "COMPLETED"
+  ) {
     throw new Error("Appointment cannot be cancelled");
   }
 
   const deletedAppointment = await prisma.appointment.update({
-    where:{
-      id : appointmentId 
+    where: {
+      id: appointmentId,
     },
-    data:{
-      status:"CANCELLED"
-    }
+    data: {
+      status: "CANCELLED",
+    },
   });
 
   return deletedAppointment;
-
 }
 export async function getAppointmentById(
-  organizationId : string,
-  appointmentId : string,
-  userId  : string , 
-  role : "OWNER" | "STAFF" | "CUSTOMER"
-){
-  
+  organizationId: string,
+  appointmentId: string,
+  userId: string,
+  role: "OWNER" | "STAFF" | "CUSTOMER",
+) {
   const appointment = await prisma.appointment.findFirst({
-    where:{
-       id : appointmentId,
-       organizationId,
-       ...(role === "CUSTOMER" ? {customerId : userId} : {}),
-       ...(role === "STAFF" ? {staffMember : {userId}} : {})
+    where: {
+      id: appointmentId,
+      organizationId,
+      ...(role === "CUSTOMER" ? { customerId: userId } : {}),
+      ...(role === "STAFF" ? { staffMember: { userId } } : {}),
     },
-    include:{
-      service : true,
-      customer :{
-        select:{
-          id : true ,
-          name : true,
-          email : true
-        }
+    include: {
+      service: true,
+      customer: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        },
       },
-      staffMember:{
-         include:{
-          user:{
-            select:{
-              id : true,
-              name : true
-            }
-          }
-         }
+      staffMember: {
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
       },
-      payments: true
-    }
+      payments: true,
+    },
   });
 
-  if(!appointment){
-    throw new Error ("No appointment found");
+  if (!appointment) {
+    throw new Error("No appointment found");
   }
 
   return appointment;
@@ -154,7 +180,7 @@ export async function getAppointmentById(
 export async function getAppointments(
   organizationId: string,
   userId: string,
-  role: "OWNER" | "STAFF" | "CUSTOMER"
+  role: "OWNER" | "STAFF" | "CUSTOMER",
 ) {
   const where = {
     organizationId,
