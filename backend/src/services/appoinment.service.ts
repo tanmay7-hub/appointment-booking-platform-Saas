@@ -5,6 +5,174 @@ import type {
 } from "../validations/appointment.validation.js";
 import prisma from "../config/prisma.js";
 
+export async function getAvailableSlots(
+  organizationId: string,
+  staffMemberId: string,
+  serviceId: string,
+  dateString: string
+) {
+  const requestedDate = new Date(`${dateString}T00:00:00.000Z`);
+
+  const nextDate = new Date(requestedDate);
+  nextDate.setUTCDate(nextDate.getUTCDate() + 1);
+
+  const staffMember = await prisma.organizationMember.findFirst({
+    where: {
+      id: staffMemberId,
+      organizationId,
+      role: "STAFF",
+    },
+  });
+
+  if (!staffMember) {
+    throw new Error("Staff member not found");
+  }
+
+  const service = await prisma.service.findFirst({
+    where: {
+      id: serviceId,
+      organizationId,
+      isActive: true,
+      staffServices: {
+        some: { staffMemberId },
+      },
+    },
+  });
+
+  if (!service) {
+    throw new Error("Service not found or not assigned to staff");
+  }
+
+  const closure = await prisma.businessClosure.findFirst({
+    where: {
+      organizationId,
+      date: {
+        gte: requestedDate,
+        lt: nextDate,
+      },
+    },
+  });
+
+  if (closure) {
+    return [];
+  }
+
+  const exception = await prisma.availabilityException.findFirst({
+    where: {
+      staffMemberId,
+      date: {
+        gte: requestedDate,
+        lt: nextDate,
+      },
+    },
+  });
+
+  if (exception?.type === "UNAVAILABLE") {
+    return [];
+  }
+
+  const dayNames = [
+    "SUNDAY",
+    "MONDAY",
+    "TUESDAY",
+    "WEDNESDAY",
+    "THURSDAY",
+    "FRIDAY",
+    "SATURDAY",
+  ] as const;
+
+  const dayOfWeek = dayNames[requestedDate.getUTCDay()];
+
+  const schedules = exception?.type === "CUSTOM_HOURS"
+    ? [{
+        startTime: exception.startTime!,
+        endTime: exception.endTime!,
+      }]
+    : await prisma.availability.findMany({
+        where: {
+          staffMemberId,
+          dayOfWeek,
+        },
+        orderBy: {
+          startTime: "asc",
+        },
+      });
+
+  if (schedules.length === 0) {
+    return [];
+  }
+
+  const appointments = await prisma.appointment.findMany({
+    where: {
+      organizationId,
+      staffMemberId,
+      status: {
+        in: ["PENDING", "CONFIRMED"],
+      },
+      startTime: { lt: nextDate },
+      endTime: { gt: requestedDate },
+    },
+    select: {
+      startTime: true,
+      endTime: true,
+    },
+  });
+
+  const now = Date.now();
+  const durationMs = service.durationMinutes * 60_000;
+  const slotIntervalMs = 15 * 60_000;
+
+  const availableSlots: {
+    startTime: string;
+    endTime: string;
+  }[] = [];
+
+  for (const schedule of schedules) {
+    const [startHour, startMinute] = schedule.startTime
+      .split(":")
+      .map(Number);
+
+    const [endHour, endMinute] = schedule.endTime
+      .split(":")
+      .map(Number);
+
+    const scheduleStart = new Date(requestedDate);
+    scheduleStart.setUTCHours(startHour, startMinute, 0, 0);
+
+    const scheduleEnd = new Date(requestedDate);
+    scheduleEnd.setUTCHours(endHour, endMinute, 0, 0);
+
+    for (
+      let slotStart = scheduleStart.getTime();
+      slotStart + durationMs <= scheduleEnd.getTime();
+      slotStart += slotIntervalMs
+    ) {
+      const slotEnd = slotStart + durationMs;
+
+      if (slotStart <= now) {
+        continue;
+      }
+
+      const overlaps = appointments.some((appointment) => {
+        return (
+          slotStart < appointment.endTime.getTime() &&
+          slotEnd > appointment.startTime.getTime()
+        );
+      });
+
+      if (overlaps) {
+        continue;
+      }
+
+      availableSlots.push({
+        startTime: new Date(slotStart).toISOString(),
+        endTime: new Date(slotEnd).toISOString(),
+      });
+    }
+  }
+
+  return availableSlots;
+}
 export async function updateAppointmentStatus(
   input: UpdateAppointmentStatusInput,
   organizationId: string,
