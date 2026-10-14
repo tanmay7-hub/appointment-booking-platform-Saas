@@ -1,20 +1,69 @@
 import type { Request, Response } from "express";
+import z from "zod"
 import {
   createAppointment,
   getAppointments,
   getAppointmentById,
   deleteAppointment,
   rescheduleAppointment,
-  updateAppointmentStatus
+  updateAppointmentStatus,
+  getAvailableSlots
 } from "../services/appoinment.service.js";
 import { createAppointmentSchema , updateAppointmentStatusSchema} from "../validations/appointment.validation.js";
 
+export async function getAvailableSlotsController( req: Request, res: Response) {
+  try {
+    const { organizationId, staffMemberId } = req.params;
+    const { serviceId, date } = req.query;
 
+    if (
+      !organizationId ||
+      !staffMemberId ||
+      typeof serviceId !== "string" ||
+      typeof date !== "string"
+    ) {
+      return res.status(400).json({
+        message: "Organization, staff, service and date are required",
+      });
+    }
 
-export async function updateAppointmentStatusController(
-  req: Request,
-  res: Response
-) {
+    const result = z.string().date().safeParse(date);
+
+    if (!result.success) {
+      return res.status(400).json({
+        message: "Date must use YYYY-MM-DD format",
+      });
+    }
+     if (
+      typeof organizationId !== "string" || typeof staffMemberId !== "string"
+    ) {
+      return res.status(400).json({ message: "Invalid input" });
+    }
+    const slots = await getAvailableSlots(
+      organizationId,
+      staffMemberId,
+      serviceId,
+      date
+    );
+
+    return res.status(200).json({ slots });
+  } catch (err) {
+    if (err instanceof Error) {
+      if (err.message === "Staff member not found") {
+        return res.status(404).json({ message: err.message });
+      }
+
+      if (err.message === "Service not found or not assigned to staff") {
+        return res.status(404).json({ message: err.message });
+      }
+    }
+
+    return res.status(500).json({
+      message: "Internal Server Error",
+    });
+  }
+}
+export async function updateAppointmentStatusController(req: Request,res: Response) {
   try {
     const { organizationId, appointmentId } = req.params;
 
@@ -161,10 +210,7 @@ export async function deleteAppointmentController(req: Request, res: Response) {
     return res.status(500).json({ message: "Internal server error" });
   }
 }
-export async function getAppointmentByIdController(
-  req: Request,
-  res: Response,
-) {
+export async function getAppointmentByIdController(req: Request,res: Response,){
   try {
     const { organizationId, appointmentId } = req.params;
 

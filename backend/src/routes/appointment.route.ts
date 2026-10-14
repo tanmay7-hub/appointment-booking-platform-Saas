@@ -9,6 +9,7 @@ import {
   deleteAppointmentController,
   rescheduleAppointmentController,
   updateAppointmentStatusController,
+  getAvailableSlotsController
 } from "../controllers/appointment.controller.js";
 const router = Router();
 
@@ -50,5 +51,12 @@ router.patch(
      checkOrganizationMemberShip,
      requireRole("STAFF" , "OWNER"),
      updateAppointmentStatusController
+);
+
+router.get(
+  "/:organizationId/staff/:staffMemberId/available-slots",
+  authenticate,
+  checkOrganizationMemberShip,
+  getAvailableSlotsController
 );
 
