@@ -2,6 +2,8 @@ import type {
   CreateAppointmentInput,
   RescheduleAppointmentInput,
   UpdateAppointmentStatusInput,
+  PaginationInput,
+  CursorPaginationInput,
 } from "../validations/appointment.validation.js";
 import prisma from "../config/prisma.js";
 
@@ -9,7 +11,7 @@ export async function getAvailableSlots(
   organizationId: string,
   staffMemberId: string,
   serviceId: string,
-  dateString: string
+  dateString: string,
 ) {
   const requestedDate = new Date(`${dateString}T00:00:00.000Z`);
 
@@ -83,20 +85,23 @@ export async function getAvailableSlots(
 
   const dayOfWeek = dayNames[requestedDate.getUTCDay()];
 
-  const schedules = exception?.type === "CUSTOM_HOURS"
-    ? [{
-        startTime: exception.startTime!,
-        endTime: exception.endTime!,
-      }]
-    : await prisma.availability.findMany({
-        where: {
-          staffMemberId,
-          dayOfWeek,
-        },
-        orderBy: {
-          startTime: "asc",
-        },
-      });
+  const schedules =
+    exception?.type === "CUSTOM_HOURS"
+      ? [
+          {
+            startTime: exception.startTime!,
+            endTime: exception.endTime!,
+          },
+        ]
+      : await prisma.availability.findMany({
+          where: {
+            staffMemberId,
+            dayOfWeek,
+          },
+          orderBy: {
+            startTime: "asc",
+          },
+        });
 
   if (schedules.length === 0) {
     return [];
@@ -128,13 +133,9 @@ export async function getAvailableSlots(
   }[] = [];
 
   for (const schedule of schedules) {
-    const [startHour, startMinute] = schedule.startTime
-      .split(":")
-      .map(Number);
+    const [startHour, startMinute] = schedule.startTime.split(":").map(Number);
 
-    const [endHour, endMinute] = schedule.endTime
-      .split(":")
-      .map(Number);
+    const [endHour, endMinute] = schedule.endTime.split(":").map(Number);
 
     const scheduleStart = new Date(requestedDate);
     scheduleStart.setUTCHours(startHour, startMinute, 0, 0);
@@ -206,14 +207,13 @@ export async function updateAppointmentStatus(
     throw new Error("Invalid appointment status transition");
   }
 
-
   const updatedAppointment = await prisma.appointment.update({
-     where:{
-      id : appointmentId
-     },
-     data:{
-      status : input.status
-     }
+    where: {
+      id: appointmentId,
+    },
+    data: {
+      status: input.status,
+    },
   });
 
   return updatedAppointment;
@@ -345,7 +345,9 @@ export async function getAppointmentById(
 
   return appointment;
 }
-export async function getAppointments(
+
+export async function getAppointmentsCursor(
+  input: CursorPaginationInput,
   organizationId: string,
   userId: string,
   role: "OWNER" | "STAFF" | "CUSTOMER",
@@ -362,41 +364,129 @@ export async function getAppointments(
       : {}),
   };
 
-  const appointments = await prisma.appointment.findMany({
-    where,
-    include: {
-      service: {
-        select: {
-          id: true,
-          name: true,
-          durationMinutes: true,
-          price: true,
+  const limit = input.limit;
+  const [appointments, count] = await Promise.all([
+    prisma.appointment.findMany({
+      where,
+      include: {
+        service: {
+          select: {
+            id: true,
+            name: true,
+            durationMinutes: true,
+            price: true,
+          },
         },
-      },
-      customer: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
+        customer: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
         },
-      },
-      staffMember: {
-        include: {
-          user: {
-            select: {
-              id: true,
-              name: true,
+        staffMember: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+              },
             },
           },
         },
       },
-    },
-    orderBy: {
-      startTime: "asc",
-    },
-  });
+      ...(input.cursor ? { skip: 1, cursor: input.cursor } : {}),
+      take: input.limit,
+      orderBy: [{ id: "asc" }, { startTime: "asc" }],
+    }),
+    prisma.appointment.count({
+      where,
+    }),
+  ]);
 
-  return appointments;
+  const totalPages = count / limit;
+  return {
+    appointments,
+    pagination: {
+      limit,
+      totalPages,
+    },
+  };
+}
+
+export async function getAppointments(
+  input: PaginationInput,
+  organizationId: string,
+  userId: string,
+  role: "OWNER" | "STAFF" | "CUSTOMER",
+) {
+  const where = {
+    organizationId,
+    ...(role === "CUSTOMER" ? { customerId: userId } : {}),
+    ...(role === "STAFF"
+      ? {
+          staffMember: {
+            userId,
+          },
+        }
+      : {}),
+  };
+
+  const limit = input.limit;
+  const page = input.page;
+
+  const skip = (page - 1) * limit;
+
+  const [appointments, count] = await Promise.all([
+    prisma.appointment.findMany({
+      where,
+      include: {
+        service: {
+          select: {
+            id: true,
+            name: true,
+            durationMinutes: true,
+            price: true,
+          },
+        },
+        customer: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        staffMember: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+      },
+      skip,
+      take: input.limit,
+      orderBy: {
+        startTime: "asc",
+      },
+    }),
+    prisma.appointment.count({
+      where,
+    }),
+  ]);
+  const totalPages = count / limit;
+  return {
+    appointments,
+    pagination: {
+      limit,
+      page,
+      total: count,
+      totalPages,
+    },
+  };
 }
 export async function createAppointment(
   input: CreateAppointmentInput,

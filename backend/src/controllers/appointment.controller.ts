@@ -9,7 +9,7 @@ import {
   updateAppointmentStatus,
   getAvailableSlots
 } from "../services/appoinment.service.js";
-import { createAppointmentSchema , updateAppointmentStatusSchema} from "../validations/appointment.validation.js";
+import { createAppointmentSchema , updateAppointmentStatusSchema , paginationSchema} from "../validations/appointment.validation.js";
 
 export async function getAvailableSlotsController( req: Request, res: Response) {
   try {
@@ -245,7 +245,9 @@ export async function getAppointmentByIdController(req: Request,res: Response,){
 }
 export async function getAppointmentsController(req: Request, res: Response) {
   try {
-    const { organizationId } = req.params;
+    const { organizationId ,limit , page} = req.params;
+    
+
 
     if (!organizationId) {
       return res.status(400).json({
@@ -259,17 +261,22 @@ export async function getAppointmentsController(req: Request, res: Response) {
       });
     }
 
-    if (typeof organizationId !== "string") {
+    if (typeof organizationId !== "string" ||  typeof limit !== "number" || typeof page !== "number") {
       return res.status(400).json({ message: "Invalid input" });
     }
+    const results = paginationSchema.safeParse(limit , page);
 
-    const appointments = await getAppointments(
+    if(!results.success){
+      return res.status(400).json({message : "Invalid input"});
+    }
+    const data = await getAppointments(
+      results.data,
       organizationId,
       req.user.userId,
       req.organization.role,
     );
 
-    return res.status(200).json({ appointments });
+    return res.status(200).json({appointments :data.appointments ,pagination : data.pagination});
   } catch {
     return res.status(500).json({
       message: "Internal Server Error",
