@@ -7,6 +7,8 @@ import type {
 } from "../validations/appointment.validation.js";
 import prisma from "../config/prisma.js";
 
+
+
 export async function getAvailableSlots(
   organizationId: string,
   staffMemberId: string,
@@ -345,7 +347,6 @@ export async function getAppointmentById(
 
   return appointment;
 }
-
 export async function getAppointmentsCursor(
   input: CursorPaginationInput,
   organizationId: string,
@@ -413,7 +414,6 @@ export async function getAppointmentsCursor(
     },
   };
 }
-
 export async function getAppointments(
   input: PaginationInput,
   organizationId: string,
