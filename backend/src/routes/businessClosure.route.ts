@@ -7,7 +7,7 @@ import {
   getBusinessClosureController,
   updateBusinessClosureController,
   deleteBusinessClosureController,
-} from "../controllers/businessClosure.controller";
+} from "../controllers/businessClosure.controller.js";
 
 const router = Router();
 

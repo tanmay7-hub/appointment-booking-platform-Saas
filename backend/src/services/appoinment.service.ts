@@ -7,8 +7,6 @@ import type {
 } from "../validations/appointment.validation.js";
 import prisma from "../config/prisma.js";
 
-
-
 export async function getAvailableSlots(
   organizationId: string,
   staffMemberId: string,
@@ -396,7 +394,7 @@ export async function getAppointmentsCursor(
           },
         },
       },
-      ...(input.cursor ? { skip: 1, cursor: input.cursor } : {}),
+      ...(input.cursor ? { skip: 1, cursor: { id: input.cursor } } : {}),
       take: input.limit,
       orderBy: [{ id: "asc" }, { startTime: "asc" }],
     }),
@@ -497,7 +495,6 @@ export async function createAppointment(
     where: {
       userId: customerId,
       organizationId,
-      role: "STAFF",
     },
   });
 
@@ -507,7 +504,7 @@ export async function createAppointment(
 
   const staffMember = await prisma.organizationMember.findFirst({
     where: {
-      userId: input.staffMemberId,
+      id: input.staffMemberId,
       organizationId,
       role: "STAFF",
     },
@@ -540,9 +537,19 @@ export async function createAppointment(
     throw new Error("service is not assigned to staff member");
   }
 
-  const startTime = input.startTime;
+  const startTime = new Date(input.startTime);
 
-  const endTime = new Date(startTime + service.durationMinutes * 60 * 1000);
+  if (Number.isNaN(startTime.getTime())) {
+    throw new Error("Invalid appointment start time");
+  }
+
+  if (startTime <= new Date()) {
+    throw new Error("Appointment must be scheduled in the future");
+  }
+
+  const endTime = new Date(
+    startTime.getTime() + service.durationMinutes * 60 * 1000,
+  );
 
   const appointment = await prisma.appointment.create({
     data: {

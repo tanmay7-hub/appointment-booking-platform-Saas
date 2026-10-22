@@ -296,7 +296,7 @@ export async function getAppointmentsCursor(input, organizationId, userId, role)
                     },
                 },
             },
-            ...(input.cursor ? { skip: 1, cursor: input.cursor } : {}),
+            ...(input.cursor ? { skip: 1, cursor: { id: input.cursor } } : {}),
             take: input.limit,
             orderBy: [{ id: "asc" }, { startTime: "asc" }],
         }),
@@ -384,7 +384,6 @@ export async function createAppointment(input, organizationId, customerId) {
         where: {
             userId: customerId,
             organizationId,
-            role: "STAFF",
         },
     });
     if (!customer) {
@@ -392,7 +391,7 @@ export async function createAppointment(input, organizationId, customerId) {
     }
     const staffMember = await prisma.organizationMember.findFirst({
         where: {
-            userId: input.staffMemberId,
+            id: input.staffMemberId,
             organizationId,
             role: "STAFF",
         },
@@ -421,8 +420,14 @@ export async function createAppointment(input, organizationId, customerId) {
     if (!isAssigned) {
         throw new Error("service is not assigned to staff member");
     }
-    const startTime = input.startTime;
-    const endTime = new Date(startTime + service.durationMinutes * 60 * 1000);
+    const startTime = new Date(input.startTime);
+    if (Number.isNaN(startTime.getTime())) {
+        throw new Error("Invalid appointment start time");
+    }
+    if (startTime <= new Date()) {
+        throw new Error("Appointment must be scheduled in the future");
+    }
+    const endTime = new Date(startTime.getTime() + service.durationMinutes * 60 * 1000);
     const appointment = await prisma.appointment.create({
         data: {
             organizationId,
