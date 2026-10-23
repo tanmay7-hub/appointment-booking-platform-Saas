@@ -173,10 +173,99 @@ export async function rescheduleAppointment(input, organizationId, appointmentId
         throw new Error("No appointment found");
     }
     const startTime = new Date(input.startTime);
-    if (startTime <= new Date()) {
+    if (Number.isNaN(startTime.getTime())) {
+        throw new Error("Invalid appointment start time");
+    }
+    if (startTime.getTime() <= Date.now()) {
         throw new Error("Appointment must be scheduled in the future");
     }
+    if (!["PENDING", "CONFIRMED"].includes(appointment.status)) {
+        throw new Error("This appointment cannot be rescheduled");
+    }
     const endTime = new Date(startTime.getTime() + appointment.service.durationMinutes * 60 * 1000);
+    const requestedDate = new Date(startTime);
+    requestedDate.setUTCHours(0, 0, 0, 0);
+    const nextDate = new Date(requestedDate);
+    nextDate.setUTCDate(nextDate.getUTCDate() + 1);
+    const closure = await prisma.businessClosure.findFirst({
+        where: {
+            organizationId,
+            date: {
+                gte: requestedDate,
+                lt: nextDate,
+            },
+        },
+    });
+    if (closure) {
+        throw new Error("Business is closed on this date");
+    }
+    const exception = await prisma.availabilityException.findFirst({
+        where: {
+            staffMemberId: appointment.staffMemberId,
+            date: {
+                gte: requestedDate,
+                lt: nextDate,
+            },
+        },
+    });
+    if (exception?.type === "UNAVAILABLE") {
+        throw new Error("Staff member is unavailable on this date");
+    }
+    const dayNames = [
+        "SUNDAY",
+        "MONDAY",
+        "TUESDAY",
+        "WEDNESDAY",
+        "THURSDAY",
+        "FRIDAY",
+        "SATURDAY",
+    ];
+    const dayOfWeek = dayNames[requestedDate.getUTCDay()];
+    const schedules = exception?.type === "CUSTOM_HOURS"
+        ? [
+            {
+                startTime: exception.startTime,
+                endTime: exception.endTime,
+            },
+        ]
+        : await prisma.availability.findMany({
+            where: {
+                staffMemberId: appointment.staffMemberId,
+                dayOfWeek,
+            },
+        });
+    const fitsSchedule = schedules.some((schedule) => {
+        const [startHour, startMinute] = schedule.startTime.split(":").map(Number);
+        const [endHour, endMinute] = schedule.endTime.split(":").map(Number);
+        const scheduleStart = new Date(requestedDate);
+        scheduleStart.setUTCHours(startHour, startMinute, 0, 0);
+        const scheduleEnd = new Date(requestedDate);
+        scheduleEnd.setUTCHours(endHour, endMinute, 0, 0);
+        return (startTime.getTime() >= scheduleStart.getTime() &&
+            endTime.getTime() <= scheduleEnd.getTime());
+    });
+    if (!fitsSchedule) {
+        throw new Error("Appointment is outside staff working hours");
+    }
+    const overlappingAppointment = await prisma.appointment.findFirst({
+        where: {
+            organizationId,
+            staffMemberId: appointment.staffMemberId,
+            id: { not: appointmentId },
+            status: {
+                in: ["PENDING", "CONFIRMED"],
+            },
+            startTime: {
+                lt: endTime,
+            },
+            endTime: {
+                gt: startTime,
+            },
+        },
+    });
+    if (overlappingAppointment) {
+        throw new Error("This time slot is already booked");
+    }
     const updatedAppointment = await prisma.appointment.update({
         where: {
             id: appointmentId,
@@ -428,6 +517,88 @@ export async function createAppointment(input, organizationId, customerId) {
         throw new Error("Appointment must be scheduled in the future");
     }
     const endTime = new Date(startTime.getTime() + service.durationMinutes * 60 * 1000);
+    const requestedDate = new Date(startTime);
+    requestedDate.setUTCHours(0, 0, 0, 0);
+    const nextDate = new Date(requestedDate);
+    nextDate.setUTCDate(nextDate.getUTCDate() + 1);
+    const closure = await prisma.businessClosure.findFirst({
+        where: {
+            organizationId,
+            date: {
+                gte: requestedDate,
+                lt: nextDate,
+            },
+        },
+    });
+    if (closure) {
+        throw new Error("Business is closed on this date");
+    }
+    const exception = await prisma.availabilityException.findFirst({
+        where: {
+            staffMemberId: staffMember.id,
+            date: {
+                gte: requestedDate,
+                lt: nextDate,
+            },
+        },
+    });
+    if (exception?.type === "UNAVAILABLE") {
+        throw new Error("Staff member is unavailable on this date");
+    }
+    const dayNames = [
+        "SUNDAY",
+        "MONDAY",
+        "TUESDAY",
+        "WEDNESDAY",
+        "THURSDAY",
+        "FRIDAY",
+        "SATURDAY",
+    ];
+    const dayOfWeek = dayNames[requestedDate.getUTCDay()];
+    const schedules = exception?.type === "CUSTOM_HOURS"
+        ? [
+            {
+                startTime: exception.startTime,
+                endTime: exception.endTime,
+            },
+        ]
+        : await prisma.availability.findMany({
+            where: {
+                staffMemberId: staffMember.id,
+                dayOfWeek,
+            },
+        });
+    const fitsSchedule = schedules.some((schedule) => {
+        const [startHour, startMinute] = schedule.startTime.split(":").map(Number);
+        const [endHour, endMinute] = schedule.endTime.split(":").map(Number);
+        const scheduleStart = new Date(requestedDate);
+        scheduleStart.setUTCHours(startHour, startMinute, 0, 0);
+        const scheduleEnd = new Date(requestedDate);
+        scheduleEnd.setUTCHours(endHour, endMinute, 0, 0);
+        return (startTime.getTime() >= scheduleStart.getTime() &&
+            endTime.getTime() <= scheduleEnd.getTime());
+    });
+    if (!fitsSchedule) {
+        throw new Error("Appointment is outside staff working hours");
+    }
+    const overlappingAppointment = await prisma.appointment.findFirst({
+        where: {
+            organizationId,
+            staffMemberId: staffMember.id,
+            status: {
+                in: ["PENDING", "CONFIRMED"],
+            },
+            startTime: {
+                lt: endTime,
+            },
+            endTime: {
+                gt: startTime,
+            },
+        },
+    });
+    if (overlappingAppointment) {
+        throw new Error("This time slot is already booked");
+    }
     const appointment = await prisma.appointment.create({
         data: {
             organizationId,

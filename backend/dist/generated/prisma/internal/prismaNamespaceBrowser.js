@@ -90,7 +90,7 @@ export const ServiceScalarFieldEnum = {
     description: 'description',
     durationMinutes: 'durationMinutes',
     price: 'price',
-    idActive: 'idActive',
+    isActive: 'isActive',
     createdAt: 'createdAt',
     updatedAt: 'updatedAt'
 };
