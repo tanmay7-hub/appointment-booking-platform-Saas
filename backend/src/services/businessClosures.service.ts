@@ -1,5 +1,7 @@
 import prisma from "../config/prisma.js";
 import { CreateBusinessClosureInput , UpdateBusinessClosureInput } from "../validations/buisnessClosure.validation.js";
+  
+
 
 export async function createBusinessClosure(
   input: CreateBusinessClosureInput,
