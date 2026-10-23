@@ -52,7 +52,9 @@ export async function deleteBusinessClosure(
       id : organizationId
     }
   });
-  if(!organization){
+  if(!organization){  
+
+    
     throw new Error("Organization does not exists");
   }
   const closure = await prisma.businessClosure.findFirst({
