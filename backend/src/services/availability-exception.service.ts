@@ -129,7 +129,7 @@ export async function getAvailabilityException(
 ){
   const staffMember = await prisma.organizationMember.findFirst({
     where: {
-      staffMemberId,
+      id : staffMemberId,
       organizationId,
       role: "STAFF",
     },
@@ -140,7 +140,7 @@ export async function getAvailabilityException(
 
   const allException = await prisma.availabilityException.findMany ({
     where:{
-      id : staffMemberId
+       staffMemberId
     },
     orderBy:{
       date:"asc"
@@ -156,7 +156,7 @@ export async function createAvailabilityException(
 ) {
   const staffMember = await prisma.organizationMember.findFirst({
     where: {
-      staffMemberId,
+      id : staffMemberId,
       organizationId,
       role: "STAFF",
     },

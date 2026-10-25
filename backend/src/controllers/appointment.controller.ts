@@ -154,7 +154,7 @@ export async function rescheduleAppointmentController(
     }
 
     if (typeof organizationId !== "string" || typeof appointmentId !== "string") {
-      return res.status(401).json({
+      return res.status(400).json({
         message: "Invalid input",
       });
     }
@@ -236,7 +236,7 @@ export async function deleteAppointmentController(req: Request, res: Response) {
       err.message === "Appointment cannot be cancelled"
     ) {
       return res
-        .status(404)
+        .status(409)
         .json({ message: "Appointment cannot be cancelled" });
     }
     return res.status(500).json({ message: "Internal server error" });
@@ -277,9 +277,8 @@ export async function getAppointmentByIdController(req: Request,res: Response,){
 }
 export async function getAppointmentsController(req: Request, res: Response) {
   try {
-    const { organizationId ,limit , page} = req.params;
-    
-
+    const { organizationId } = req.params;
+    const { limit, page } = req.query;
 
     if (!organizationId) {
       return res.status(400).json({
@@ -293,23 +292,35 @@ export async function getAppointmentsController(req: Request, res: Response) {
       });
     }
 
-    if (typeof organizationId !== "string" ||  typeof limit !== "number" || typeof page !== "number") {
-      return res.status(400).json({ message: "Invalid input" });
-    }
-    const results = paginationSchema.safeParse(limit , page);
+    const parsed = paginationSchema.safeParse({
+      limit: limit ?? "10",
+      page: page ?? "1",
+    });
 
-    if(!results.success){
+    if (!parsed.success) {
+      return res.status(400).json({
+        message: "Invalid pagination parameters",
+        errors: parsed.error.flatten(),
+      });
+    }
+     
+    if(typeof organizationId !== "string"){
       return res.status(400).json({message : "Invalid input"});
     }
     const data = await getAppointments(
-      results.data,
+      parsed.data,
       organizationId,
       req.user.userId,
       req.organization.role,
     );
 
-    return res.status(200).json({appointments :data.appointments ,pagination : data.pagination});
-  } catch {
+    return res.status(200).json({
+      appointments: data.appointments,
+      pagination: data.pagination,
+    });
+  } catch (error) {
+    console.error("Get appointments error:", error);
+
     return res.status(500).json({
       message: "Internal Server Error",
     });
