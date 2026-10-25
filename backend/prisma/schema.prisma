@@ -1,7 +1,7 @@
 generator client {
   provider = "prisma-client"
   output   = "../generated/prisma"
-  importFileExtension = "ts"
+  importFileExtension = "js"
 }
 
 datasource db {
@@ -66,7 +66,7 @@ model Service {
   durationMinutes Int
   price           Decimal
   
-  idActive  Boolean @default(true)
+  isActive  Boolean @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

@@ -9,7 +9,7 @@ import {
   updateAppointmentStatus,
   getAvailableSlots
 } from "../services/appoinment.service.js";
-import { createAppointmentSchema , updateAppointmentStatusSchema , paginationSchema} from "../validations/appointment.validation.js";
+import { createAppointmentSchema , updateAppointmentStatusSchema , paginationSchema , rescheduleAppointmentSchema} from "../validations/appointment.validation.js";
 
 export async function getAvailableSlotsController( req: Request, res: Response) {
   try {
@@ -125,49 +125,81 @@ export async function updateAppointmentStatusController(req: Request,res: Respon
     });
   }
 }
-export async function rescheduleAppointmentController(req: Request, res: Response) {
+export async function rescheduleAppointmentController(
+  req: Request,
+  res: Response,
+) {
   try {
     const { organizationId, appointmentId } = req.params;
-    const {startTime } = req.body;
-    if (!req.user || !req.organization) {
-      return res.status(401).json({ message: "Authentication failed" });
-    }
-    if (!organizationId || !appointmentId || !startTime){
-      return res.status(400).json({ message: "Invalid Input" });
+
+    if (!organizationId || !appointmentId) {
+      return res.status(400).json({
+        message: "Organization ID and appointment ID are required",
+      });
     }
 
-    if (
-      typeof organizationId !== "string" ||
-      typeof appointmentId !== "string"
-    ) {
-      return res.status(400).json({ message: "Invalid input" });
+    if (!req.user || !req.organization) {
+      return res.status(401).json({
+        message: "Authentication required",
+      });
+    }
+
+    const result = rescheduleAppointmentSchema.safeParse(req.body);
+
+    if (!result.success) {
+      return res.status(400).json({
+        message: "Invalid request body",
+        errors: result.error.issues,
+      });
+    }
+
+    if (typeof organizationId !== "string" || typeof appointmentId !== "string") {
+      return res.status(401).json({
+        message: "Invalid input",
+      });
     }
 
     const updatedAppointment = await rescheduleAppointment(
-      startTime,
+      result.data,
       organizationId,
       appointmentId,
       req.user.userId,
       req.organization.role,
     );
 
+    return res.status(200).json({
+      message: "Appointment rescheduled successfully",
+      appointment: updatedAppointment,
+    });
+  } catch (error) {
+    if (error instanceof Error) {
+      const badRequestErrors = [
+        "Invalid appointment start time",
+        "Appointment must be scheduled in the future",
+        "This appointment cannot be rescheduled",
+        "Business is closed on this date",
+        "Staff member is unavailable on this date",
+        "Appointment is outside staff working hours",
+      ];
 
-    return res.status(200).json({updatedAppointment});
-  } catch (err) {
-     if (err instanceof Error && err.message === "No appointment found") {
-      return res.status(404).json({ message: "appointment not found" });
+      if (badRequestErrors.includes(error.message)) {
+        return res.status(400).json({ message: error.message });
+      }
+
+      if (error.message === "No appointment found") {
+        return res.status(404).json({ message: error.message });
+      }
+
+      if (error.message === "This time slot is already booked") {
+        return res.status(409).json({ message: error.message });
+      }
     }
-    if (
-      err instanceof Error &&
-      err.message === "Appointment must be scheduled in the future"
-    ) {
-      return res
-        .status(404)
-        .json({ message: "Appointment must be scheduled in the future" });
-    }
 
+    console.error("Reschedule appointment error:", error);
 
-    return res.status(500).json({ message: "Internal server error" });
+    return res.status(500).json({
+      message: "Internal server error",
+    });
   }
 }
 export async function deleteAppointmentController(req: Request, res: Response) {

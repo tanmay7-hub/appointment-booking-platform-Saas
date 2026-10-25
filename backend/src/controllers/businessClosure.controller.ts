@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
-import {createBusinessClosure , getBusinessClosure , updateBusinessClosure , deleteBusinessClosure} from "../services/businessClosures.service"
-import {createBusinessClosureSchema , updateBusinessClosureSchema} from "../validations/buisnessClosure.validation"
+import {createBusinessClosure , getBusinessClosure , updateBusinessClosure , deleteBusinessClosure} from "../services/businessClosures.service.js"
+import {createBusinessClosureSchema , updateBusinessClosureSchema} from "../validations/buisnessClosure.validation.js"
 
 
 
