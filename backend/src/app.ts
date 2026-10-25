@@ -6,6 +6,7 @@ import availabilityRoutes from "./routes/availability.route.js";
 import availabilityExceptionRoutes from "./routes/availability-exception.route.js";
 import appointmentRoutes from "./routes/appointment.route.js";
 import businessClosureRoutes from "./routes/businessClosure.route.js";
+import testApiRoutes from "./routes/testApi.controller.js"
 const app = express();
 
 app.use(express.json());
@@ -17,6 +18,8 @@ app.get("/health" , (req,res)=>{
    }
 });
 
+
+app.use("/health" , testApiRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/organizations", organizationRoutes);
 app.use("/api/organizations", serviceRoutes);
