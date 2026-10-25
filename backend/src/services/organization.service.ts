@@ -31,7 +31,6 @@ export async function updateService(
 
   return updatedService;
 }
- 
 export async function getStaffService(
   organizationId: string,
   staffMemberId: string,
@@ -103,15 +102,15 @@ export async function assignServiceToStaff(
   serviceId: string,
   staffMemberId: string,
 ) {
-  const UserCheck = await prisma.organizationMember.findFirst({
+  const staffCheck = await prisma.organizationMember.findFirst({
     where: {
       organizationId,
-      userId: staffMemberId,
+      id: staffMemberId,
       role: "STAFF",
     },
   });
 
-  if (!UserCheck) {
+  if (!staffCheck) {
     throw new Error("Staff member does not belong to the organization");
   }
 
@@ -146,28 +145,29 @@ export async function assignServiceToStaff(
 
   return assignment;
 }
-export async function deleteService(organizationId: string, serviceId: string) {
+export async function deleteService(
+  organizationId: string,
+  serviceId: string,
+) {
   const service = await prisma.service.findFirst({
     where: {
       id: serviceId,
       organizationId,
     },
   });
+
   if (!service) {
     throw new Error("Service Not Found");
-
-    const updatedService = await prisma.service.update({
-      where: {
-        id: serviceId,
-        organizationId,
-      },
-      data: {
-        isActive: false,
-      },
-    });
-
-    return updatedService;
   }
+
+  return prisma.service.update({
+    where: {
+      id: serviceId,
+    },
+    data: {
+      isActive: false,
+    },
+  });
 }
 export async function getServiceById(
   organizationId: string,

@@ -358,9 +358,13 @@ export async function rescheduleAppointment(
   if (overlappingAppointment) {
     throw new Error("This time slot is already booked");
   }
-  const updatedAppointment = await prisma.appointment.update({
+  const result = await prisma.appointment.updateMany({
     where: {
       id: appointmentId,
+      organizationId,
+      status: {
+        in: ["PENDING", "CONFIRMED"],
+      },
     },
     data: {
       startTime,
@@ -368,7 +372,15 @@ export async function rescheduleAppointment(
     },
   });
 
-  return updatedAppointment;
+  if (result.count === 0) {
+    throw new Error("This appointment cannot be rescheduled");
+  }
+
+  return prisma.appointment.findUnique({
+    where: {
+      id: appointmentId,
+    },
+  });
 }
 export async function deleteAppointment(
   organizationId: string,
@@ -400,16 +412,30 @@ export async function deleteAppointment(
     throw new Error("Appointment cannot be cancelled");
   }
 
-  const deletedAppointment = await prisma.appointment.update({
+  const result = await prisma.appointment.updateMany({
     where: {
       id: appointmentId,
+      organizationId,
+      status: {
+        in: ["PENDING", "CONFIRMED"],
+      },
     },
     data: {
       status: "CANCELLED",
     },
   });
 
-  return deletedAppointment;
+  if (result.count === 0) {
+    throw new Error(
+      "Appointment could not be cancelled because its status has changed",
+    );
+  }
+
+  return prisma.appointment.findUnique({
+    where: {
+      id: appointmentId,
+    },
+  });
 }
 export async function getAppointmentById(
   organizationId: string,
@@ -594,6 +620,28 @@ export async function getAppointments(
     },
   };
 }
+
+function isAppointmentConflict(error: unknown): boolean {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+
+  const err = error as {
+    code?: string;
+    message?: string;
+    meta?: { code?: string };
+  };
+
+  if (err.code === "23P01" || err.meta?.code === "23P01") {
+    return true;
+  }
+
+  return (
+    err.code === "P2004" &&
+    typeof err.message === "string" &&
+    err.message.includes("Appointment_no_overlapping_active_staff_appointments")
+  );
+}
 export async function createAppointment(
   input: CreateAppointmentInput,
   organizationId: string,
@@ -603,11 +651,12 @@ export async function createAppointment(
     where: {
       userId: customerId,
       organizationId,
+      role: "CUSTOMER",
     },
   });
 
   if (!customer) {
-    throw new Error("Customer is not a member of this  organization");
+    throw new Error("Customer is not a member of this organization");
   }
 
   const staffMember = await prisma.organizationMember.findFirst({
@@ -756,16 +805,22 @@ export async function createAppointment(
   if (overlappingAppointment) {
     throw new Error("This time slot is already booked");
   }
-  const appointment = await prisma.appointment.create({
-    data: {
-      organizationId,
-      customerId,
-      staffMemberId: input.staffMemberId,
-      serviceId: input.serviceId,
-      startTime,
-      endTime,
-    },
-  });
+  try {
+    return await prisma.appointment.create({
+      data: {
+        organizationId,
+        customerId,
+        staffMemberId: input.staffMemberId,
+        serviceId: input.serviceId,
+        startTime,
+        endTime,
+      },
+    });
+  } catch (error) {
+    if (isAppointmentConflict(error)) {
+      throw new Error("This time slot is already booked");
+    }
 
-  return appointment;
+    throw error;
+  }
 }

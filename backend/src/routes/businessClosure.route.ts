@@ -39,3 +39,5 @@ router.delete(
   requireRole("OWNER"),
   deleteBusinessClosureController,
 );
+
+export default router;

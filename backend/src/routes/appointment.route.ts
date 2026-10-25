@@ -46,7 +46,7 @@ router.patch(
    rescheduleAppointmentController
 );
 router.patch(
-    "/:organizationId/appointment/:appointmentId/status",
+    "/:organizationId/appointments/:appointmentId/status",
      authenticate ,
      checkOrganizationMemberShip,
      requireRole("STAFF" , "OWNER"),
@@ -59,4 +59,5 @@ router.get(
   checkOrganizationMemberShip,
   getAvailableSlotsController
 );
+export default router;
 

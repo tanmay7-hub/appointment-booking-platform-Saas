@@ -1,6 +1,7 @@
 import { authenticate } from "../middlewares/auth.middleware.js";
 import { checkOrganizationMemberShip } from "../middlewares/organization.middleware.js";
 import { requireRole } from "../middlewares/role.middleware.js";
+import { checkStaffTargetAccess } from "../middlewares/staff.middleware.js";
 import { Router } from "express";
 import {
   createAvailabilityExceptionController,
@@ -16,12 +17,15 @@ router.post(
   authenticate,
   checkOrganizationMemberShip,
   requireRole("OWNER", "STAFF"),
+  checkStaffTargetAccess,
   createAvailabilityExceptionController,
 );
 router.get(
   "/:organizationId/staff/:staffMemberId/availability-exceptions",
   authenticate,
   checkOrganizationMemberShip,
+  requireRole("OWNER", "STAFF"),
+  checkStaffTargetAccess,
   getAvailabilityExceptionController,
 );
 
@@ -30,6 +34,7 @@ router.patch(
   authenticate,
   checkOrganizationMemberShip,
   requireRole("STAFF", "OWNER"),
+  checkStaffTargetAccess,
   updateAvailabilityExceptionController,
 );
 
@@ -38,5 +43,8 @@ router.delete(
   authenticate,
   checkOrganizationMemberShip,
   requireRole("OWNER", "STAFF"),
+  checkStaffTargetAccess,
   deleteAvailabilityExceptionController,
 );
+
+export default router;
